@@ -1,0 +1,2088 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SNAKE DRAFT ARENA - 커스텀 팀 빌딩 & 전투 시뮬레이터</title>
+  <style>
+    :root {
+      --bg-main: #0b0e14;
+      --bg-panel: #131823;
+      --bg-card: #1a2130;
+      --bg-hover: #232c40;
+      --border-color: #2a3449;
+      --text-main: #f1f5f9;
+      --text-muted: #94a3b8;
+      --accent: #3b82f6;
+      --accent-glow: rgba(59, 130, 246, 0.4);
+      --danger: #ef4444;
+      --success: #10b981;
+      --warning: #f59e0b;
+
+      /* Tier Colors */
+      --tier-X: #9b59b6;
+      --tier-S: #e74c3c;
+      --tier-A: #f1c40f;
+      --tier-B: #2ecc71;
+      --tier-C: #3498db;
+      --tier-D: #95a5a6;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg-main);
+      color: var(--text-main);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow-x: hidden;
+    }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: var(--bg-main); }
+    ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #475569; }
+
+    /* Header */
+    header {
+      background: linear-gradient(90deg, #0f172a 0%, #1e1b4b 50%, #0f172a 100%);
+      border-bottom: 1px solid var(--border-color);
+      padding: 12px 24px;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 1.35rem;
+      font-weight: 800;
+      letter-spacing: 0.5px;
+      background: linear-gradient(to right, #60a5fa, #c084fc);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .header-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+    }
+
+    /* Buttons */
+    button {
+      cursor: pointer;
+      border: 1px solid var(--border-color);
+      background: var(--bg-card);
+      color: var(--text-main);
+      padding: 8px 14px;
+      border-radius: 6px;
+      font-size: 0.88rem;
+      font-weight: 600;
+      transition: all 0.15s ease;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    button:hover:not(:disabled) {
+      background: var(--bg-hover);
+      border-color: #475569;
+    }
+
+    button:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+    }
+    .btn-primary:hover:not(:disabled) {
+      background: #2563eb;
+      box-shadow: 0 0 12px var(--accent-glow);
+    }
+
+    .btn-success {
+      background: var(--success);
+      border-color: var(--success);
+      color: #064e3b;
+      font-weight: 700;
+    }
+    .btn-success:hover:not(:disabled) { background: #059669; color: #fff; }
+
+    .btn-danger {
+      background: rgba(239, 68, 68, 0.15);
+      border-color: var(--danger);
+      color: #fca5a5;
+    }
+    .btn-danger:hover:not(:disabled) { background: var(--danger); color: #fff; }
+
+    .btn-warning {
+      background: rgba(245, 158, 11, 0.15);
+      border-color: var(--warning);
+      color: #fcd34d;
+    }
+    .btn-warning:hover:not(:disabled) { background: var(--warning); color: #000; }
+
+    .btn-sm { padding: 4px 9px; font-size: 0.8rem; }
+
+    /* Container & Views */
+    .container {
+      max-width: 1640px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 20px;
+      flex: 1;
+    }
+
+    .view-section { display: none; }
+    .view-section.active { display: block; animation: fadeIn 0.25s ease; }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Cards & Panels */
+    .panel {
+      background: var(--bg-panel);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+
+    .panel-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid var(--border-color);
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .panel-title {
+      font-size: 1.15rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* Setup Grid */
+    .setup-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+      gap: 20px;
+    }
+
+    .form-group {
+      margin-bottom: 14px;
+    }
+
+    .form-group label {
+      display: block;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+      font-weight: 600;
+    }
+
+    input[type="text"], input[type="number"], select, textarea {
+      width: 100%;
+      background: var(--bg-main);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-size: 0.9rem;
+    }
+
+    input:focus, select:focus, textarea:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+
+    .preset-btns {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+
+    .input-row {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+    }
+
+    /* Position Tags */
+    .pos-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .pos-tag {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      padding: 6px 10px;
+      border-radius: 6px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.85rem;
+    }
+
+    .pos-tag input {
+      width: 85px;
+      padding: 3px 6px;
+      font-size: 0.85rem;
+      background: var(--bg-main);
+    }
+
+    /* Roster Preview Grid in Setup */
+    .mini-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(135px, 1fr));
+      gap: 12px;
+      margin-top: 12px;
+    }
+
+    /* Square Avatar Card */
+    .avatar-box {
+      width: 100%;
+      aspect-ratio: 1 / 1;
+      background: #0f172a;
+      border-radius: 8px;
+      overflow: hidden;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 2px solid var(--border-color);
+    }
+
+    .avatar-box img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .avatar-placeholder {
+      font-size: 2rem;
+      font-weight: 800;
+      color: #475569;
+      user-select: none;
+    }
+
+    /* Tier Badges & Borders */
+    .tier-badge {
+      display: inline-block;
+      padding: 2px 7px;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      font-weight: 800;
+      color: #fff;
+      text-shadow: 0 1px 2px rgba(0,0,0,0.6);
+    }
+    .tier-X { background-color: var(--tier-X); }
+    .tier-S { background-color: var(--tier-S); }
+    .tier-A { background-color: var(--tier-A); color: #111; text-shadow: none; }
+    .tier-B { background-color: var(--tier-B); color: #052e16; text-shadow: none; }
+    .tier-C { background-color: var(--tier-C); }
+    .tier-D { background-color: var(--tier-D); color: #111; text-shadow: none; }
+
+    .border-tier-X { border-color: var(--tier-X) !important; box-shadow: 0 0 10px rgba(155, 89, 182, 0.35); }
+    .border-tier-S { border-color: var(--tier-S) !important; box-shadow: 0 0 10px rgba(231, 76, 60, 0.3); }
+    .border-tier-A { border-color: var(--tier-A) !important; }
+    .border-tier-B { border-color: var(--tier-B) !important; }
+    .border-tier-C { border-color: var(--tier-C) !important; }
+    .border-tier-D { border-color: var(--tier-D) !important; }
+
+    /* Draft Status Banner */
+    .draft-banner {
+      background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+      border: 1px solid var(--accent);
+      border-radius: 12px;
+      padding: 16px 20px;
+      margin-bottom: 20px;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+    }
+
+    .turn-indicator {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .turn-avatar {
+      width: 56px;
+      height: 56px;
+      aspect-ratio: 1 / 1;
+      border-radius: 10px;
+      overflow: hidden;
+      border: 2px solid var(--accent);
+      background: #0f172a;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 1.2rem;
+    }
+    .turn-avatar img { width: 100%; height: 100%; object-fit: cover; }
+
+    .snake-order-bar {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+      margin-top: 8px;
+    }
+
+    .order-chip {
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 0.78rem;
+      background: var(--bg-main);
+      border: 1px solid var(--border-color);
+      color: var(--text-muted);
+    }
+    .order-chip.active {
+      background: var(--accent);
+      color: #fff;
+      border-color: #93c5fd;
+      font-weight: 700;
+      transform: scale(1.06);
+    }
+
+    /* Horizontal Teams Board */
+    .teams-board-wrapper {
+      overflow-x: auto;
+      padding-bottom: 10px;
+      margin-bottom: 22px;
+    }
+
+    .teams-board {
+      display: flex;
+      gap: 14px;
+      min-width: max-content;
+    }
+
+    .team-column {
+      width: 245px;
+      background: var(--bg-panel);
+      border: 2px solid var(--border-color);
+      border-radius: 12px;
+      padding: 12px;
+      transition: all 0.2s ease;
+      flex-shrink: 0;
+    }
+
+    .team-column.active-turn {
+      border-color: var(--warning);
+      box-shadow: 0 0 18px rgba(245, 158, 11, 0.35);
+      background: #182032;
+    }
+
+    .team-captain-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding-bottom: 10px;
+      margin-bottom: 10px;
+      border-bottom: 1px solid var(--border-color);
+      cursor: pointer;
+    }
+
+    .captain-thumb {
+      width: 54px;
+      height: 54px;
+      aspect-ratio: 1 / 1;
+      border-radius: 8px;
+      overflow: hidden;
+      border: 2px solid #60a5fa;
+      flex-shrink: 0;
+      background: #0f172a;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+    }
+    .captain-thumb img { width: 100%; height: 100%; object-fit: cover; }
+
+    .team-slots {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+    }
+
+    .team-slot-card {
+      background: var(--bg-card);
+      border: 1px dashed #334155;
+      border-radius: 8px;
+      padding: 6px;
+      text-align: center;
+      min-height: 128px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .team-slot-card.filled {
+      border-style: solid;
+      cursor: pointer;
+    }
+    .team-slot-card.filled:hover { transform: translateY(-2px); }
+
+    /* Tier Rows in Draft Pool */
+    .tier-row-container {
+      margin-bottom: 18px;
+      background: rgba(15, 23, 42, 0.5);
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      padding: 12px;
+    }
+
+    .tier-row-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 10px;
+      font-weight: 800;
+      font-size: 1rem;
+    }
+
+    .tier-cards-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(145px, 1fr));
+      gap: 12px;
+    }
+
+    .player-card {
+      background: var(--bg-card);
+      border: 2px solid var(--border-color);
+      border-radius: 10px;
+      padding: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      transition: all 0.15s ease;
+      position: relative;
+    }
+
+    .player-card:hover:not(.drafted) {
+      transform: translateY(-3px);
+      background: var(--bg-hover);
+    }
+
+    .player-card.drafted {
+      opacity: 0.35;
+      filter: grayscale(85%);
+      pointer-events: none;
+    }
+
+    .drafted-stamp {
+      position: absolute;
+      top: 40%;
+      left: 50%;
+      transform: translate(-50%, -50%) rotate(-12deg);
+      background: rgba(239, 68, 68, 0.9);
+      color: #fff;
+      font-weight: 900;
+      font-size: 0.78rem;
+      padding: 3px 8px;
+      border-radius: 4px;
+      z-index: 5;
+      white-space: nowrap;
+    }
+
+    .card-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+
+    .card-name {
+      font-weight: 700;
+      font-size: 0.92rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .card-actions {
+      display: flex;
+      gap: 4px;
+      margin-top: 2px;
+    }
+    .card-actions button { flex: 1; padding: 5px 4px; font-size: 0.76rem; }
+
+    /* Modal */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.78);
+      backdrop-filter: blur(4px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      padding: 16px;
+    }
+    .modal-backdrop.open { display: flex; }
+
+    .modal-box {
+      background: var(--bg-panel);
+      border: 1px solid #475569;
+      border-radius: 14px;
+      width: 100%;
+      max-width: 860px;
+      max-height: 92vh;
+      overflow-y: auto;
+      padding: 22px;
+      box-shadow: 0 20px 50px rgba(0,0,0,0.7);
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 12px;
+      margin-bottom: 16px;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .modal-grid {
+      display: grid;
+      grid-template-columns: 220px 1fr;
+      gap: 20px;
+    }
+
+    @media (max-width: 720px) {
+      .modal-grid { grid-template-columns: 1fr; }
+      .team-column { width: 215px; }
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      background: var(--bg-main);
+      padding: 12px;
+      border-radius: 8px;
+      border: 1px solid var(--border-color);
+    }
+
+    @media (max-width: 600px) {
+      .stats-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+
+    .stat-total-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 12px;
+      border-radius: 6px;
+      margin-top: 8px;
+      font-weight: 700;
+      font-size: 0.9rem;
+      background: rgba(16, 185, 129, 0.15);
+      border: 1px solid var(--success);
+      color: #6ee7b7;
+    }
+    .stat-total-bar.over-limit {
+      background: rgba(239, 68, 68, 0.2);
+      border-color: var(--danger);
+      color: #fca5a5;
+    }
+
+    /* Analysis Cards */
+    .analysis-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+      gap: 18px;
+    }
+
+    .analysis-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 18px;
+    }
+
+    .star-rating {
+      font-size: 1.3rem;
+      color: #fbbf24;
+      font-weight: 800;
+      letter-spacing: 2px;
+    }
+
+    .tag-pill {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-size: 0.75rem;
+      background: #1e293b;
+      border: 1px solid #334155;
+      margin: 2px;
+    }
+
+    .analysis-section-title {
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: #60a5fa;
+      margin: 12px 0 4px;
+    }
+
+    .analysis-text {
+      font-size: 0.85rem;
+      line-height: 1.5;
+      color: #cbd5e1;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- HEADER -->
+  <header>
+    <div class="logo">
+      <span>⚔️ SNAKE DRAFT ARENA</span>
+    </div>
+    <div class="header-actions">
+      <button onclick="switchView('setup')" id="nav-setup">⚙️ 설정 & 로스터</button>
+      <button onclick="switchView('draft')" id="nav-draft">🎯 드래프트 보드</button>
+      <button onclick="switchView('result')" id="nav-result">📊 결과 & 조합 분석</button>
+      <button onclick="exportJSON()" class="btn-sm">💾 JSON 백업</button>
+      <button onclick="document.getElementById('json-import-input').click()" class="btn-sm">📂 JSON 불러오기</button>
+      <input type="file" id="json-import-input" accept=".json" style="display:none" onchange="importJSON(event)" />
+      <button onclick="resetAllToDefault()" class="btn-danger btn-sm">🗑️ 전체 초기화</button>
+    </div>
+  </header>
+
+  <div class="container">
+    <!-- ==================== 1. SETUP VIEW ==================== -->
+    <section id="view-setup" class="view-section active">
+      <div class="setup-grid">
+        <!-- 드래프트 규칙 및 프리셋 -->
+        <div class="panel">
+          <div class="panel-header">
+            <div class="panel-title">1️⃣ 드래프트 구조 및 프리셋 설정</div>
+          </div>
+          <label style="font-size:0.85rem; color:var(--text-muted); display:block; margin-bottom:6px;">원클릭 프리셋 선택</label>
+          <div class="preset-btns">
+            <button onclick="applyDraftPreset(6, 6, 36, 'lol')">[기본] 6팀 (감독 6 / 참가자 36 / 5포지션)</button>
+            <button onclick="applyDraftPreset(5, 5, 25, 'lol')">[5인] 5팀 (감독 5 / 참가자 25 / 5포지션)</button>
+            <button onclick="applyDraftPreset(4, 7, 28, 'rpg')">[7포지션] 4팀 (감독 4 / 참가자 28 / 7포지션)</button>
+          </div>
+
+          <div class="input-row">
+            <div class="form-group">
+              <label>팀 수 (감독 수)</label>
+              <input type="number" id="cfg-team-count" min="2" max="16" value="6" onchange="syncRosterCounts()" />
+            </div>
+            <div class="form-group">
+              <label>팀당 뽑을 팀원 수</label>
+              <input type="number" id="cfg-members-per-team" min="1" max="15" value="6" onchange="syncRosterCounts()" />
+            </div>
+            <div class="form-group">
+              <label>총 참가자 풀 인원</label>
+              <input type="number" id="cfg-total-players" min="2" max="120" value="36" onchange="syncRosterCounts()" />
+            </div>
+          </div>
+          <p style="font-size:0.8rem; color:var(--text-muted); margin-top:4px;">
+            * 스네이크 드래프트는 총 <strong id="lbl-total-picks" style="color:#60a5fa;">36</strong>픽(라운드당 팀 수만큼 진행)으로 운영됩니다.
+          </p>
+        </div>
+
+        <!-- 포지션 체계 설정 -->
+        <div class="panel">
+          <div class="panel-header">
+            <div class="panel-title">2️⃣ 포지션(라인 / RPG 직업) 설정</div>
+            <div style="display:flex; gap:6px;">
+              <button class="btn-sm" onclick="applyPositionPreset('lol')">롤 라인 버전</button>
+              <button class="btn-sm" onclick="applyPositionPreset('rpg')">RPG 직업 7종</button>
+            </div>
+          </div>
+          <div style="display:flex; gap:8px;">
+            <input type="text" id="new-pos-input" placeholder="새 포지션명 입력 (예: 유격수, 서머너)" onkeydown="if(event.key==='Enter') addPosition()" />
+            <button class="btn-primary" onclick="addPosition()">+ 추가</button>
+          </div>
+          <div class="pos-list" id="pos-list-container"></div>
+        </div>
+      </div>
+
+      <!-- 8번째 커스텀 스탯 관리 패널 -->
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">3️⃣ 8번째 핵심 스탯(종족/고유 스탯, Max 100) 관리</div>
+        </div>
+        <div style="display:grid; grid-template-columns: 1fr 2fr auto; gap:10px; margin-bottom:12px;">
+          <input type="text" id="custom-stat-name" placeholder="새 스탯 명칭 (예: 마력 친화도)" />
+          <input type="text" id="custom-stat-desc" placeholder="스탯 효과 및 설명 입력" />
+          <button class="btn-primary" onclick="addCustomStat8()">+ 스탯 추가</button>
+        </div>
+        <div id="stat8-list-preview" style="display:flex; flex-wrap:wrap; gap:8px;"></div>
+      </div>
+
+      <!-- 감독 명단 관리 -->
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">👑 감독(팀장) 명단 (<span id="captain-count-badge">6</span>명)</div>
+          <div style="display:flex; gap:8px;">
+            <button class="btn-sm" onclick="addEntity('captain')">+ 감독 추가</button>
+          </div>
+        </div>
+        <div class="mini-grid" id="setup-captains-grid"></div>
+      </div>
+
+      <!-- 참가자 명단 관리 -->
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">⚔️ 참가자(드래프트 풀) 명단 (<span id="player-count-badge">36</span>명)</div>
+          <div style="display:flex; gap:8px; flex-wrap:wrap;">
+            <button class="btn-sm" onclick="randomizeSampleData()">🎲 샘플 데이터 자동 채우기</button>
+            <button class="btn-sm" onclick="addEntity('player')">+ 참가자 추가</button>
+          </div>
+        </div>
+        <div class="mini-grid" id="setup-players-grid"></div>
+      </div>
+
+      <!-- 드래프트 시작 버튼 -->
+      <div style="text-align:center; margin: 28px 0 40px;">
+        <button class="btn-success" style="font-size:1.15rem; padding:14px 36px; border-radius:10px;" onclick="startDraft()">
+          🚀 스네이크 드래프트 시작하기
+        </button>
+      </div>
+    </section>
+
+    <!-- ==================== 2. DRAFT VIEW ==================== -->
+    <section id="view-draft" class="view-section">
+      <!-- 상단 현재 픽 안내 배너 -->
+      <div class="draft-banner">
+        <div class="turn-indicator">
+          <div class="turn-avatar" id="turn-captain-avatar">?</div>
+          <div>
+            <div style="font-size:0.85rem; color:#93c5fd; font-weight:700;" id="draft-round-info">ROUND 1 · PICK 1 / 36</div>
+            <div style="font-size:1.25rem; font-weight:800;" id="draft-turn-title">현재 지명 차례: 감독 1</div>
+            <div class="snake-order-bar" id="snake-order-bar"></div>
+          </div>
+        </div>
+        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+          <button onclick="undoLastPick()" id="btn-undo-pick">↩️ 직전 픽 무르기</button>
+          <button onclick="autoPickOne()" class="btn-warning" id="btn-auto-pick">⚡ AI 자동 픽 (1명)</button>
+          <button onclick="restartDraft()" class="btn-danger">🔄 드래프트 초기화</button>
+          <button onclick="switchView('result')" class="btn-success" id="btn-goto-result" style="display:none;">📊 최종 결과 & 분석 보기</button>
+        </div>
+      </div>
+
+      <!-- 실시간 팀 빌딩 현황 (가로 배치) -->
+      <div class="panel" style="padding:14px;">
+        <div class="panel-header" style="margin-bottom:10px;">
+          <div class="panel-title">🏆 실시간 팀 빌딩 현황 (클릭 시 상세 프로필 열람)</div>
+          <span style="font-size:0.82rem; color:var(--text-muted);">좌우로 스크롤하여 모든 팀 확인 가능</span>
+        </div>
+        <div class="teams-board-wrapper">
+          <div class="teams-board" id="draft-teams-board"></div>
+        </div>
+      </div>
+
+      <!-- 티어별 참가자 대기 명단 -->
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">📋 참가자 대기 명단 (티어별 정렬)</div>
+          <div style="display:flex; gap:8px; align-items:center;">
+            <select id="filter-pos-select" onchange="renderDraftPool()" style="width:auto;">
+              <option value="ALL">전체 포지션 보기</option>
+            </select>
+          </div>
+        </div>
+        <div id="draft-tier-pool"></div>
+      </div>
+    </section>
+
+    <!-- ==================== 3. RESULT & ANALYSIS VIEW ==================== -->
+    <section id="view-result" class="view-section">
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">🎉 스네이크 드래프트 최종 로스터 및 자동 조합 분석 리포트</div>
+          <div style="display:flex; gap:10px; flex-wrap:wrap;">
+            <button onclick="backToSetupFromResult()" class="btn-primary">🏠 처음으로 돌아가기 / 재시작</button>
+          </div>
+        </div>
+        <p style="color:var(--text-muted); font-size:0.9rem; margin-bottom:16px;">
+          각 팀의 티어 분포, 8대 스탯 총합 밸런스, 20개 속성 간 상호 시너지 및 상성 약점, 역할군 조화를 종합 분석하여 5.0점 만점으로 평가한 결과입니다.
+        </p>
+        <div class="analysis-grid" id="result-analysis-grid"></div>
+      </div>
+    </section>
+  </div>
+
+  <!-- ==================== DETAIL / EDIT MODAL ==================== -->
+  <div class="modal-backdrop" id="profile-modal">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 id="modal-title" style="font-size:1.2rem;">참가자 상세 프로필 & 8대 스탯 설정</h3>
+        <button onclick="closeModal()" class="btn-sm">✕ 닫기</button>
+      </div>
+
+      <div class="modal-grid">
+        <!-- 좌측: 정사각형 이미지 & 기본 메타 -->
+        <div>
+          <div class="avatar-box" id="modal-avatar-preview" style="margin-bottom:10px;">
+            <span class="avatar-placeholder">IMG</span>
+          </div>
+          <label class="btn-primary" style="width:100%; text-align:center; display:block; margin-bottom:10px; cursor:pointer;">
+            📷 정사각형 이미지 업로드
+            <input type="file" accept="image/*" style="display:none;" onchange="handleModalImageUpload(event)" />
+          </label>
+          <button class="btn-sm" style="width:100%; margin-bottom:14px;" onclick="clearModalImage()">이미지 제거</button>
+
+          <div class="form-group">
+            <label>이름 / 닉네임</label>
+            <input type="text" id="m-name" />
+          </div>
+
+          <div class="form-group">
+            <label>티어 (X ~ D)</label>
+            <select id="m-tier">
+              <option value="X">X 티어 (보라)</option>
+              <option value="S">S 티어 (빨강)</option>
+              <option value="A">A 티어 (노랑)</option>
+              <option value="B">B 티어 (초록)</option>
+              <option value="C">C 티어 (파랑)</option>
+              <option value="D">D 티어 (회색)</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label>주 포지션</label>
+            <select id="m-pos"></select>
+          </div>
+
+          <div class="form-group">
+            <label>속성 (20종)</label>
+            <select id="m-element"></select>
+          </div>
+
+          <div class="form-group">
+            <label>종족 (선택 또는 직접 입력)</label>
+            <input type="text" id="m-race" list="race-datalist" placeholder="예: 인간, 혈귀, 드래곤, 펭귄..." />
+            <datalist id="race-datalist">
+              <option value="인간"></option>
+              <option value="혈귀"></option>
+              <option value="드래곤"></option>
+              <option value="펭귄"></option>
+              <option value="여우"></option>
+              <option value="청룡"></option>
+              <option value="고대공룡"></option>
+            </datalist>
+          </div>
+        </div>
+
+        <!-- 우측: 전투 기믹 & 8대 스탯 -->
+        <div>
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+            <div class="form-group">
+              <label>전투 역할군</label>
+              <input type="text" id="m-role" placeholder="예: 만능형, 특수 스위퍼, 물리 탱커" />
+            </div>
+            <div class="form-group">
+              <label>패시브 (Passive)</label>
+              <input type="text" id="m-passive" placeholder="상시 발동 효과" />
+            </div>
+            <div class="form-group">
+              <label>특성 (Ability)</label>
+              <input type="text" id="m-ability" placeholder="기본 고유 특성" />
+            </div>
+            <div class="form-group">
+              <label>숨겨진 특성 (Hidden)</label>
+              <input type="text" id="m-hidden-ability" placeholder="히든 특성" />
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>각성 (발동 조건 · 효과 · 페널티)</label>
+            <textarea id="m-awakening" rows="2" placeholder="예: [조건] HP 30% 이하 / [효과] 모든 공격 1.5배 / [페널티] 매 턴 방어 하락"></textarea>
+          </div>
+
+          <div class="form-group">
+            <label>전용 기술 (Signature Move)</label>
+            <input type="text" id="m-signature" placeholder="고유 필살기 및 부가 효과 설명" />
+          </div>
+
+          <!-- 8대 스탯 섹션 -->
+          <div style="margin-top:14px;">
+            <label style="font-size:0.9rem; font-weight:700; color:#93c5fd; display:block; margin-bottom:8px;">
+              📊 8대 스탯 설정 (개체값 총합 최대 2,333 제한)
+            </label>
+            <div class="stats-grid">
+              <div>
+                <label style="font-size:0.78rem;">HP</label>
+                <input type="number" id="s-hp" min="0" max="2333" oninput="recalcStatTotal()" />
+              </div>
+              <div>
+                <label style="font-size:0.78rem;">공격</label>
+                <input type="number" id="s-atk" min="0" max="2333" oninput="recalcStatTotal()" />
+              </div>
+              <div>
+                <label style="font-size:0.78rem;">방어</label>
+                <input type="number" id="s-def" min="0" max="2333" oninput="recalcStatTotal()" />
+              </div>
+              <div>
+                <label style="font-size:0.78rem;">특공</label>
+                <input type="number" id="s-spa" min="0" max="2333" oninput="recalcStatTotal()" />
+              </div>
+              <div>
+                <label style="font-size:0.78rem;">특방</label>
+                <input type="number" id="s-spd" min="0" max="2333" oninput="recalcStatTotal()" />
+              </div>
+              <div>
+                <label style="font-size:0.78rem;">스피드</label>
+                <input type="number" id="s-spe" min="0" max="2333" oninput="recalcStatTotal()" />
+              </div>
+              <div>
+                <label style="font-size:0.78rem;">전략</label>
+                <input type="number" id="s-str" min="0" max="2333" oninput="recalcStatTotal()" />
+              </div>
+              <div>
+                <label style="font-size:0.78rem; color:#fbbf24;">8번째 스탯 (Max 100)</label>
+                <input type="number" id="s-stat8-val" min="0" max="100" oninput="recalcStatTotal()" />
+              </div>
+            </div>
+
+            <div style="margin-top:10px;">
+              <label style="font-size:0.8rem; color:var(--text-muted);">8번째 핵심 스탯 종류 선택</label>
+              <select id="s-stat8-type" onchange="updateStat8DescPreview()"></select>
+              <div id="s-stat8-desc-box" style="font-size:0.78rem; color:#fcd34d; margin-top:4px; background:rgba(245,158,11,0.1); padding:6px 10px; border-radius:6px;"></div>
+            </div>
+
+            <div class="stat-total-bar" id="stat-total-bar">
+              <span>최종 개체값 총합: <strong id="stat-total-num">0</strong> / 2,333</span>
+              <span id="stat-total-status">✅ 정상 범위</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex; justify-content:space-between; margin-top:20px; padding-top:14px; border-top:1px solid var(--border-color);">
+        <button class="btn-danger" id="btn-delete-entity" onclick="deleteCurrentEntity()">🗑️ 삭제하기</button>
+        <div style="display:flex; gap:10px;">
+          <button onclick="closeModal()">취소</button>
+          <button class="btn-primary" onclick="saveModalEntity()">💾 저장하기</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /* ==========================================================================
+       1. CONSTANTS & INITIAL DATA
+       ========================================================================== */
+    const STORAGE_KEY = 'snake_draft_arena_v1';
+
+    const ELEMENTS_20 = [
+      '해', '달', '물', '얼음', '풀', '비행', '불', '바위', '땅', '드래곤',
+      '격투', '귀신', '강철', '독', '벌레', '전기', '악', '선', '정신', '보통'
+    ];
+
+    const TIERS = ['X', 'S', 'A', 'B', 'C', 'D'];
+
+    const POS_PRESETS = {
+      lol: ['탑', '정글', '미드', '원딜', '서폿'],
+      rpg: ['탱커', '전사', '마법사', '암살자', '원거리딜러', '서포터', '힐러']
+    };
+
+    const DEFAULT_STAT8_LIST = [
+      {
+        id: 'learning',
+        name: '습득 (인간 한정)',
+        desc: '경험치·기술 연마 속도 증가 및 숨겨진 잠재능력 개방 확률 증가 (Max 100)'
+      },
+      {
+        id: 'regen',
+        name: '재생력 (혈귀 한정)',
+        desc: '상처 회복 및 신체 부위 복구 속도. 목을 베이지 않는 한 전투 지속력 향상 (Max 100)'
+      },
+      {
+        id: 'skin_hardness',
+        name: '피부 경도 (드래곤 한정)',
+        desc: '일반 방어와 별개로 최종 물리 피해 감소 및 일격 경직 시간 감소 (Max 100)'
+      },
+      {
+        id: 'cold_adapt',
+        name: '추위 적응력 (펭귄 한정)',
+        desc: "얼음 속성 위력 증가, '눈' 필드 시 매 턴 HP 회복. 단, 비행 속성 기술 사용 시 수치에 비례해 스피드 하락 디메리트 (Max 100)"
+      },
+      {
+        id: 'sharp_mind',
+        name: '명석한 두뇌 (여우 한정)',
+        desc: '소모성 장치(랜덤박스) 긍정 효과 확률 상승 및 적 디버프·함정 기믹 무효화/역이용 확률 증가 (Max 100)'
+      },
+      {
+        id: 'azure_scale',
+        name: '청룡의 비늘 (청룡/하프 한정)',
+        desc: '일반 특방과 별개로 최종 특수·마법 피해 감소, 일격 경직 감소 및 상태이상 확률 감소 (Max 100)'
+      }
+    ];
+
+    let appState = {
+      config: {
+        teamCount: 6,
+        membersPerTeam: 6,
+        totalPlayers: 36,
+        positions: [...POS_PRESETS.lol],
+        stat8List: JSON.parse(JSON.stringify(DEFAULT_STAT8_LIST))
+      },
+      captains: [],
+      players: [],
+      draft: {
+        started: false,
+        finished: false,
+        currentPickIndex: 0,
+        pickOrder: [], // array of captain IDs
+        picks: {}      // { captainId: [playerId, ...] }
+      }
+    };
+
+    let editingTarget = null; // { type: 'captain' | 'player', id: string }
+    let tempImageBase64 = '';
+
+    /* ==========================================================================
+       2. INITIALIZATION & STORAGE
+       ========================================================================== */
+    function initApp() {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          appState = { ...appState, ...parsed };
+        } catch (e) {
+          console.error('Failed to parse saved state:', e);
+          createDefaultRoster(6, 36);
+        }
+      } else {
+        createDefaultRoster(6, 36);
+      }
+
+      populateModalSelects();
+      renderSetupView();
+
+      if (appState.draft.started) {
+        if (appState.draft.finished) {
+          switchView('result');
+        } else {
+          switchView('draft');
+        }
+      } else {
+        switchView('setup');
+      }
+    }
+
+    function saveState() {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(appState));
+      } catch (e) {
+        alert('브라우저 저장 용량(LocalStorage)이 가득 찼습니다. 이미지 용량을 줄이거나 JSON 내보내기를 이용해 주세요.');
+      }
+    }
+
+    function createDefaultEntity(type, index) {
+      const positions = appState.config.positions;
+      const pos = positions[index % positions.length] || '자유';
+      const tier = type === 'captain' ? 'S' : TIERS[Math.min(Math.floor(index / Math.max(1, Math.ceil(appState.config.totalPlayers / 6))), 5)];
+      const el = ELEMENTS_20[index % ELEMENTS_20.length];
+      const races = ['인간', '혈귀', '드래곤', '펭귄', '여우', '청룡', '고대공룡'];
+      const race = races[index % races.length];
+      const stat8 = appState.config.stat8List[index % appState.config.stat8List.length];
+
+      return {
+        id: `${type}_${Date.now()}_${index}_${Math.random().toString(36).slice(2, 6)}`,
+        name: type === 'captain' ? `감독 ${index + 1}` : `참가자 ${index + 1}`,
+        tier,
+        pos,
+        element: el,
+        race,
+        image: '',
+        role: ['만능형', '물리 탱커', '특수 스위퍼', '암살 딜러', '전술 서포터'][index % 5],
+        passive: '전투 개시 시 기세 상승',
+        ability: '투쟁심',
+        hiddenAbility: '한계 돌파',
+        awakening: '[조건] 체력 30% 이하 / [효과] 주력 스탯 1.3배 / [페널티] 방어력 15% 감소',
+        signature: `${el}의 일격`,
+        stats: {
+          hp: 320,
+          atk: 310,
+          def: 300,
+          spa: 310,
+          spd: 300,
+          spe: 320,
+          str: 300,
+          stat8Type: stat8 ? stat8.id : 'learning',
+          stat8Val: 80
+        }
+      };
+    }
+
+    function createDefaultRoster(teamCount, totalPlayers) {
+      appState.captains = [];
+      for (let i = 0; i < teamCount; i++) {
+        appState.captains.push(createDefaultEntity('captain', i));
+      }
+      appState.players = [];
+      for (let i = 0; i < totalPlayers; i++) {
+        appState.players.push(createDefaultEntity('player', i));
+      }
+    }
+
+    function resetAllToDefault() {
+      if (!confirm('모든 설정과 등록된 이미지·스탯 데이터를 초기 상태로 되돌릴까요?')) return;
+      localStorage.removeItem(STORAGE_KEY);
+      appState = {
+        config: {
+          teamCount: 6,
+          membersPerTeam: 6,
+          totalPlayers: 36,
+          positions: [...POS_PRESETS.lol],
+          stat8List: JSON.parse(JSON.stringify(DEFAULT_STAT8_LIST))
+        },
+        captains: [],
+        players: [],
+        draft: { started: false, finished: false, currentPickIndex: 0, pickOrder: [], picks: {} }
+      };
+      createDefaultRoster(6, 36);
+      saveState();
+      populateModalSelects();
+      switchView('setup');
+      renderSetupView();
+    }
+
+    /* ==========================================================================
+       3. VIEW NAVIGATION
+       ========================================================================== */
+    function switchView(viewName) {
+      document.querySelectorAll('.view-section').forEach(el => el.classList.remove('active'));
+      document.getElementById(`view-${viewName}`).classList.add('active');
+
+      if (viewName === 'setup') renderSetupView();
+      if (viewName === 'draft') renderDraftView();
+      if (viewName === 'result') renderResultView();
+    }
+
+    /* ==========================================================================
+       4. SETUP VIEW LOGIC
+       ========================================================================== */
+    function applyDraftPreset(teams, members, players, posType) {
+      document.getElementById('cfg-team-count').value = teams;
+      document.getElementById('cfg-members-per-team').value = members;
+      document.getElementById('cfg-total-players').value = players;
+      applyPositionPreset(posType);
+      syncRosterCounts();
+    }
+
+    function applyPositionPreset(type) {
+      appState.config.positions = [...POS_PRESETS[type]];
+      saveState();
+      renderSetupView();
+      populateModalSelects();
+    }
+
+    function addPosition() {
+      const input = document.getElementById('new-pos-input');
+      const val = input.value.trim();
+      if (!val) return;
+      if (!appState.config.positions.includes(val)) {
+        appState.config.positions.push(val);
+        input.value = '';
+        saveState();
+        renderSetupView();
+        populateModalSelects();
+      }
+    }
+
+    function updatePositionName(idx, newName) {
+      const trimmed = newName.trim();
+      if (!trimmed) return;
+      appState.config.positions[idx] = trimmed;
+      saveState();
+      populateModalSelects();
+    }
+
+    function removePosition(idx) {
+      if (appState.config.positions.length <= 1) {
+        alert('최소 1개 이상의 포지션이 필요합니다.');
+        return;
+      }
+      appState.config.positions.splice(idx, 1);
+      saveState();
+      renderSetupView();
+      populateModalSelects();
+    }
+
+    function addCustomStat8() {
+      const nameInput = document.getElementById('custom-stat-name');
+      const descInput = document.getElementById('custom-stat-desc');
+      const name = nameInput.value.trim();
+      const desc = descInput.value.trim() || '사용자 정의 8번째 핵심 스탯 (Max 100)';
+      if (!name) {
+        alert('새 8번째 스탯의 명칭을 입력해 주세요.');
+        return;
+      }
+      const newId = 'custom_' + Date.now();
+      appState.config.stat8List.push({ id: newId, name, desc });
+      nameInput.value = '';
+      descInput.value = '';
+      saveState();
+      renderSetupView();
+      populateModalSelects();
+    }
+
+    function removeCustomStat8(idx) {
+      if (appState.config.stat8List.length <= 1) {
+        alert('최소 1개의 8번째 스탯 항목이 있어야 합니다.');
+        return;
+      }
+      appState.config.stat8List.splice(idx, 1);
+      saveState();
+      renderSetupView();
+      populateModalSelects();
+    }
+
+    function syncRosterCounts() {
+      const tCount = Math.max(2, parseInt(document.getElementById('cfg-team-count').value) || 6);
+      const mCount = Math.max(1, parseInt(document.getElementById('cfg-members-per-team').value) || 6);
+      let pCount = Math.max(tCount * mCount, parseInt(document.getElementById('cfg-total-players').value) || 36);
+
+      document.getElementById('cfg-total-players').value = pCount;
+      appState.config.teamCount = tCount;
+      appState.config.membersPerTeam = mCount;
+      appState.config.totalPlayers = pCount;
+
+      // Adjust captains array length
+      while (appState.captains.length < tCount) {
+        appState.captains.push(createDefaultEntity('captain', appState.captains.length));
+      }
+      if (appState.captains.length > tCount) {
+        appState.captains = appState.captains.slice(0, tCount);
+      }
+
+      // Adjust players array length
+      while (appState.players.length < pCount) {
+        appState.players.push(createDefaultEntity('player', appState.players.length));
+      }
+      if (appState.players.length > pCount) {
+        appState.players = appState.players.slice(0, pCount);
+      }
+
+      saveState();
+      renderSetupView();
+    }
+
+    function addEntity(type) {
+      if (type === 'captain') {
+        appState.captains.push(createDefaultEntity('captain', appState.captains.length));
+        appState.config.teamCount = appState.captains.length;
+        document.getElementById('cfg-team-count').value = appState.config.teamCount;
+      } else {
+        appState.players.push(createDefaultEntity('player', appState.players.length));
+        appState.config.totalPlayers = appState.players.length;
+        document.getElementById('cfg-total-players').value = appState.config.totalPlayers;
+      }
+      saveState();
+      renderSetupView();
+    }
+
+    function randomizeSampleData() {
+      const sampleNames = [
+        '페이커', '제우스', '오너', '구마유시', '케리아', '쵸비', '캐니언', '기인', '페이즈', '리헨즈',
+        '바이퍼', '제카', '피넛', '도란', '딜라이트', '쇼메이커', '루시드', '킹겐', '에이밍', '켈린',
+        '데프트', '표식', '베릴', '비디디', '커즈', '라스칼', '테디', '모건', '엄티', '크로코',
+        '아르토리아', '길가메쉬', '탄지로', '렌고쿠', '기유', '시노부', '네즈코', '젠이츠', '이노스케', '무이치로'
+      ];
+      const roles = ['만능형', '물리 탱커', '특수 스위퍼', '물리 어태커', '암살자', '전략 서포터', '힐러형'];
+      const races = ['인간', '혈귀', '드래곤', '펭귄', '여우', '청룡', '고대공룡'];
+
+      appState.players.forEach((p, idx) => {
+        p.name = sampleNames[idx % sampleNames.length] + (idx >= sampleNames.length ? ` ${idx + 1}` : '');
+        p.tier = TIERS[Math.floor(Math.random() * TIERS.length)];
+        p.pos = appState.config.positions[idx % appState.config.positions.length];
+        p.element = ELEMENTS_20[Math.floor(Math.random() * ELEMENTS_20.length)];
+        p.race = races[Math.floor(Math.random() * races.length)];
+        p.role = roles[Math.floor(Math.random() * roles.length)];
+        const stat8Obj = appState.config.stat8List[idx % appState.config.stat8List.length];
+        p.stats = {
+          hp: 260 + Math.floor(Math.random() * 110),
+          atk: 240 + Math.floor(Math.random() * 140),
+          def: 240 + Math.floor(Math.random() * 130),
+          spa: 240 + Math.floor(Math.random() * 140),
+          spd: 240 + Math.floor(Math.random() * 130),
+          spe: 250 + Math.floor(Math.random() * 140),
+          str: 250 + Math.floor(Math.random() * 130),
+          stat8Type: stat8Obj.id,
+          stat8Val: 65 + Math.floor(Math.random() * 36)
+        };
+      });
+
+      saveState();
+      renderSetupView();
+    }
+
+    function renderSetupView() {
+      document.getElementById('cfg-team-count').value = appState.config.teamCount;
+      document.getElementById('cfg-members-per-team').value = appState.config.membersPerTeam;
+      document.getElementById('cfg-total-players').value = appState.config.totalPlayers;
+      document.getElementById('lbl-total-picks').textContent = appState.config.teamCount * appState.config.membersPerTeam;
+
+      // Positions
+      const posContainer = document.getElementById('pos-list-container');
+      posContainer.innerHTML = appState.config.positions.map((pos, idx) => `
+        <div class="pos-tag">
+          <input type="text" value="${escapeHtml(pos)}" onchange="updatePositionName(${idx}, this.value)" />
+          <button class="btn-danger btn-sm" style="padding:2px 6px;" onclick="removePosition(${idx})">✕</button>
+        </div>
+      `).join('');
+
+      // Stat8 list
+      const stat8Preview = document.getElementById('stat8-list-preview');
+      stat8Preview.innerHTML = appState.config.stat8List.map((st, idx) => `
+        <div class="pos-tag" title="${escapeHtml(st.desc)}">
+          <span>⭐ <strong>${escapeHtml(st.name)}</strong></span>
+          ${idx >= 6 ? `<button class="btn-danger btn-sm" style="padding:1px 5px;" onclick="removeCustomStat8(${idx})">✕</button>` : ''}
+        </div>
+      `).join('');
+
+      // Captains
+      document.getElementById('captain-count-badge').textContent = appState.captains.length;
+      const capGrid = document.getElementById('setup-captains-grid');
+      capGrid.innerHTML = appState.captains.map((cap, idx) => renderSetupMiniCard(cap, 'captain', idx)).join('');
+
+      // Players
+      document.getElementById('player-count-badge').textContent = appState.players.length;
+      const plyGrid = document.getElementById('setup-players-grid');
+      plyGrid.innerHTML = appState.players.map((ply, idx) => renderSetupMiniCard(ply, 'player', idx)).join('');
+    }
+
+    function renderSetupMiniCard(entity, type, idx) {
+      const totalStat = calcEntityTotalStat(entity);
+      return `
+        <div class="player-card border-tier-${entity.tier}" style="cursor:pointer;" onclick="openModal('${type}', '${entity.id}')">
+          <div class="avatar-box">
+            ${entity.image
+              ? `<img src="${entity.image}" alt="${escapeHtml(entity.name)}" />`
+              : `<span class="avatar-placeholder">${escapeHtml(entity.name.slice(0, 2))}</span>`}
+            <span class="tier-badge tier-${entity.tier}" style="position:absolute; top:6px; left:6px;">${entity.tier}</span>
+            <span class="tag-pill" style="position:absolute; bottom:6px; right:6px; background:rgba(0,0,0,0.75);">${escapeHtml(entity.pos)}</span>
+          </div>
+          <div class="card-name">${escapeHtml(entity.name)}</div>
+          <div class="card-meta">
+            <span>${escapeHtml(entity.element)} · ${escapeHtml(entity.race)}</span>
+            <span style="color:${totalStat > 2333 ? '#f87171' : '#34d399'}; font-weight:700;">${totalStat}</span>
+          </div>
+        </div>
+      `;
+    }
+
+    /* ==========================================================================
+       5. MODAL (EDIT / DETAIL VIEW) & IMAGE HANDLING
+       ========================================================================== */
+    function populateModalSelects() {
+      const posSel = document.getElementById('m-pos');
+      posSel.innerHTML = appState.config.positions.map(p => `<option value="${escapeHtml(p)}">${escapeHtml(p)}</option>`).join('');
+
+      const elSel = document.getElementById('m-element');
+      elSel.innerHTML = ELEMENTS_20.map(e => `<option value="${e}">${e}</option>`).join('');
+
+      const st8Sel = document.getElementById('s-stat8-type');
+      st8Sel.innerHTML = appState.config.stat8List.map(st => `<option value="${st.id}">${escapeHtml(st.name)}</option>`).join('');
+    }
+
+    function openModal(type, id) {
+      const list = type === 'captain' ? appState.captains : appState.players;
+      const entity = list.find(item => item.id === id);
+      if (!entity) return;
+
+      editingTarget = { type, id };
+      tempImageBase64 = entity.image || '';
+
+      populateModalSelects();
+
+      document.getElementById('modal-title').textContent = `${type === 'captain' ? '👑 감독' : '⚔️ 참가자'} 상세 프로필 및 8대 스탯`;
+      document.getElementById('m-name').value = entity.name;
+      document.getElementById('m-tier').value = entity.tier;
+      document.getElementById('m-pos').value = appState.config.positions.includes(entity.pos) ? entity.pos : appState.config.positions[0];
+      document.getElementById('m-element').value = entity.element || '보통';
+      document.getElementById('m-race').value = entity.race || '인간';
+      document.getElementById('m-role').value = entity.role || '';
+      document.getElementById('m-passive').value = entity.passive || '';
+      document.getElementById('m-ability').value = entity.ability || '';
+      document.getElementById('m-hidden-ability').value = entity.hiddenAbility || '';
+      document.getElementById('m-awakening').value = entity.awakening || '';
+      document.getElementById('m-signature').value = entity.signature || '';
+
+      document.getElementById('s-hp').value = entity.stats.hp;
+      document.getElementById('s-atk').value = entity.stats.atk;
+      document.getElementById('s-def').value = entity.stats.def;
+      document.getElementById('s-spa').value = entity.stats.spa;
+      document.getElementById('s-spd').value = entity.stats.spd;
+      document.getElementById('s-spe').value = entity.stats.spe;
+      document.getElementById('s-str').value = entity.stats.str;
+      document.getElementById('s-stat8-type').value = entity.stats.stat8Type || appState.config.stat8List[0].id;
+      document.getElementById('s-stat8-val').value = Math.min(100, entity.stats.stat8Val || 0);
+
+      updateModalAvatarPreview();
+      updateStat8DescPreview();
+      recalcStatTotal();
+
+      document.getElementById('btn-delete-entity').style.display = appState.draft.started ? 'none' : 'inline-flex';
+      document.getElementById('profile-modal').classList.add('open');
+    }
+
+    function closeModal() {
+      document.getElementById('profile-modal').classList.remove('open');
+      editingTarget = null;
+    }
+
+    function updateModalAvatarPreview() {
+      const box = document.getElementById('modal-avatar-preview');
+      if (tempImageBase64) {
+        box.innerHTML = `<img src="${tempImageBase64}" alt="preview" />`;
+      } else {
+        const name = document.getElementById('m-name').value || 'IMG';
+        box.innerHTML = `<span class="avatar-placeholder">${escapeHtml(name.slice(0, 2))}</span>`;
+      }
+    }
+
+    // Resize & Crop image to square 360x360 JPEG so LocalStorage never overflows
+    function handleModalImageUpload(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const img = new Image();
+        img.onload = function() {
+          const canvas = document.createElement('canvas');
+          const size = 360;
+          canvas.width = size;
+          canvas.height = size;
+          const ctx = canvas.getContext('2d');
+
+          const minSide = Math.min(img.width, img.height);
+          const sx = (img.width - minSide) / 2;
+          const sy = (img.height - minSide) / 2;
+
+          ctx.drawImage(img, sx, sy, minSide, minSide, 0, 0, size, size);
+          tempImageBase64 = canvas.toDataURL('image/jpeg', 0.82);
+          updateModalAvatarPreview();
+        };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function clearModalImage() {
+      tempImageBase64 = '';
+      updateModalAvatarPreview();
+    }
+
+    function updateStat8DescPreview() {
+      const selectedId = document.getElementById('s-stat8-type').value;
+      const found = appState.config.stat8List.find(s => s.id === selectedId);
+      document.getElementById('s-stat8-desc-box').textContent = found ? found.desc : '';
+    }
+
+    function recalcStatTotal() {
+      const hp = parseInt(document.getElementById('s-hp').value) || 0;
+      const atk = parseInt(document.getElementById('s-atk').value) || 0;
+      const def = parseInt(document.getElementById('s-def').value) || 0;
+      const spa = parseInt(document.getElementById('s-spa').value) || 0;
+      const spd = parseInt(document.getElementById('s-spd').value) || 0;
+      const spe = parseInt(document.getElementById('s-spe').value) || 0;
+      const str = parseInt(document.getElementById('s-str').value) || 0;
+      let s8 = parseInt(document.getElementById('s-stat8-val').value) || 0;
+
+      if (s8 > 100) {
+        s8 = 100;
+        document.getElementById('s-stat8-val').value = 100;
+      }
+
+      const total = hp + atk + def + spa + spd + spe + str + s8;
+      document.getElementById('stat-total-num').textContent = total.toLocaleString();
+
+      const bar = document.getElementById('stat-total-bar');
+      const status = document.getElementById('stat-total-status');
+      if (total > 2333) {
+        bar.classList.add('over-limit');
+        status.textContent = `⚠️ 한도 초과! (${total - 2333} 초과됨)`;
+      } else {
+        bar.classList.remove('over-limit');
+        status.textContent = `✅ 정상 범위 (잔여 ${2333 - total})`;
+      }
+      return total;
+    }
+
+    function saveModalEntity() {
+      if (!editingTarget) return;
+      const total = recalcStatTotal();
+      if (total > 2333) {
+        if (!confirm(`최종 개체값 총합이 ${total}으로 제한(2,333)을 초과했습니다. 그래도 저장할까요?`)) {
+          return;
+        }
+      }
+
+      const list = editingTarget.type === 'captain' ? appState.captains : appState.players;
+      const entity = list.find(item => item.id === editingTarget.id);
+      if (!entity) return;
+
+      entity.name = document.getElementById('m-name').value.trim() || '이름 없음';
+      entity.tier = document.getElementById('m-tier').value;
+      entity.pos = document.getElementById('m-pos').value;
+      entity.element = document.getElementById('m-element').value;
+      entity.race = document.getElementById('m-race').value.trim() || '미상';
+      entity.image = tempImageBase64;
+      entity.role = document.getElementById('m-role').value.trim();
+      entity.passive = document.getElementById('m-passive').value.trim();
+      entity.ability = document.getElementById('m-ability').value.trim();
+      entity.hiddenAbility = document.getElementById('m-hidden-ability').value.trim();
+      entity.awakening = document.getElementById('m-awakening').value.trim();
+      entity.signature = document.getElementById('m-signature').value.trim();
+
+      entity.stats = {
+        hp: parseInt(document.getElementById('s-hp').value) || 0,
+        atk: parseInt(document.getElementById('s-atk').value) || 0,
+        def: parseInt(document.getElementById('s-def').value) || 0,
+        spa: parseInt(document.getElementById('s-spa').value) || 0,
+        spd: parseInt(document.getElementById('s-spd').value) || 0,
+        spe: parseInt(document.getElementById('s-spe').value) || 0,
+        str: parseInt(document.getElementById('s-str').value) || 0,
+        stat8Type: document.getElementById('s-stat8-type').value,
+        stat8Val: Math.min(100, parseInt(document.getElementById('s-stat8-val').value) || 0)
+      };
+
+      saveState();
+      closeModal();
+      renderSetupView();
+      if (appState.draft.started) renderDraftView();
+      if (appState.draft.finished) renderResultView();
+    }
+
+    function deleteCurrentEntity() {
+      if (!editingTarget) return;
+      if (!confirm('이 항목을 삭제할까요?')) return;
+      if (editingTarget.type === 'captain') {
+        if (appState.captains.length <= 2) return alert('최소 2명의 감독이 필요합니다.');
+        appState.captains = appState.captains.filter(c => c.id !== editingTarget.id);
+        appState.config.teamCount = appState.captains.length;
+      } else {
+        appState.players = appState.players.filter(p => p.id !== editingTarget.id);
+        appState.config.totalPlayers = appState.players.length;
+      }
+      saveState();
+      closeModal();
+      renderSetupView();
+    }
+
+    function calcEntityTotalStat(entity) {
+      const s = entity.stats;
+      return (s.hp || 0) + (s.atk || 0) + (s.def || 0) + (s.spa || 0) + (s.spd || 0) + (s.spe || 0) + (s.str || 0) + (s.stat8Val || 0);
+    }
+
+    /* ==========================================================================
+       6. SNAKE DRAFT LOGIC
+       ========================================================================== */
+    function generateSnakeOrder(captains, rounds) {
+      const order = [];
+      for (let r = 0; r < rounds; r++) {
+        const roundOrder = r % 2 === 0 ? [...captains] : [...captains].reverse();
+        roundOrder.forEach(c => order.push(c.id));
+      }
+      return order;
+    }
+
+    function startDraft() {
+      const neededPicks = appState.config.teamCount * appState.config.membersPerTeam;
+      if (appState.players.length < neededPicks) {
+        alert(`총 픽 수(${neededPicks}명)보다 참가자 풀(${appState.players.length}명)이 적습니다. 참가자를 더 추가해 주세요.`);
+        return;
+      }
+
+      const pickOrder = generateSnakeOrder(appState.captains, appState.config.membersPerTeam);
+      const picks = {};
+      appState.captains.forEach(c => { picks[c.id] = []; });
+
+      appState.draft = {
+        started: true,
+        finished: false,
+        currentPickIndex: 0,
+        pickOrder,
+        picks
+      };
+
+      saveState();
+      switchView('draft');
+    }
+
+    function restartDraft() {
+      if (!confirm('진행 중인 드래프트 픽을 모두 초기화하고 1픽부터 다시 시작할까요?')) return;
+      startDraft();
+    }
+
+    function backToSetupFromResult() {
+      appState.draft.started = false;
+      appState.draft.finished = false;
+      saveState();
+      switchView('setup');
+    }
+
+    function getDraftedPlayerIds() {
+      const set = new Set();
+      Object.values(appState.draft.picks).forEach(arr => arr.forEach(id => set.add(id)));
+      return set;
+    }
+
+    function pickPlayer(playerId) {
+      if (!appState.draft.started) {
+        startDraft();
+      }
+      if (appState.draft.finished) return;
+
+      const draftedSet = getDraftedPlayerIds();
+      if (draftedSet.has(playerId)) return;
+
+      const currentCaptainId = appState.draft.pickOrder[appState.draft.currentPickIndex];
+      appState.draft.picks[currentCaptainId].push(playerId);
+      appState.draft.currentPickIndex++;
+
+      if (appState.draft.currentPickIndex >= appState.draft.pickOrder.length) {
+        appState.draft.finished = true;
+      }
+
+      saveState();
+      renderDraftView();
+    }
+
+    function undoLastPick() {
+      if (!appState.draft.started || appState.draft.currentPickIndex <= 0) return;
+      appState.draft.currentPickIndex--;
+      appState.draft.finished = false;
+      const prevCaptainId = appState.draft.pickOrder[appState.draft.currentPickIndex];
+      appState.draft.picks[prevCaptainId].pop();
+      saveState();
+      renderDraftView();
+    }
+
+    function autoPickOne() {
+      if (!appState.draft.started) startDraft();
+      if (appState.draft.finished) return;
+
+      const draftedSet = getDraftedPlayerIds();
+      const available = appState.players.filter(p => !draftedSet.has(p.id));
+      if (available.length === 0) return;
+
+      // Sort by tier priority then stats
+      const tierRank = { X: 6, S: 5, A: 4, B: 3, C: 2, D: 1 };
+      available.sort((a, b) => (tierRank[b.tier] - tierRank[a.tier]) || (calcEntityTotalStat(b) - calcEntityTotalStat(a)));
+      pickPlayer(available[0].id);
+    }
+
+    function renderDraftView() {
+      if (!appState.draft.started) {
+        // Initialize draft state if user clicked tab directly
+        startDraft();
+        return;
+      }
+
+      const { currentPickIndex, pickOrder, finished, picks } = appState.draft;
+      const teamCount = appState.captains.length;
+      const currentRound = Math.min(appState.config.membersPerTeam, Math.floor(currentPickIndex / teamCount) + 1);
+      const currentCaptainId = finished ? null : pickOrder[currentPickIndex];
+      const currentCaptain = appState.captains.find(c => c.id === currentCaptainId);
+
+      // Update Banner
+      const avatarEl = document.getElementById('turn-captain-avatar');
+      if (finished) {
+        document.getElementById('draft-round-info').textContent = `ALL ${pickOrder.length} PICKS COMPLETED!`;
+        document.getElementById('draft-turn-title').textContent = '🎉 모든 스네이크 드래프트가 완료되었습니다!';
+        avatarEl.innerHTML = '🏆';
+        document.getElementById('btn-goto-result').style.display = 'inline-flex';
+        document.getElementById('btn-auto-pick').disabled = true;
+      } else {
+        document.getElementById('draft-round-info').textContent = `ROUND ${currentRound} / ${appState.config.membersPerTeam} · PICK ${currentPickIndex + 1} / ${pickOrder.length}`;
+        document.getElementById('draft-turn-title').innerHTML = `현재 지명 차례: <span style="color:#fbbf24;">${escapeHtml(currentCaptain.name)}</span> (${escapeHtml(currentCaptain.pos)})`;
+        avatarEl.innerHTML = currentCaptain.image
+          ? `<img src="${currentCaptain.image}" alt="${escapeHtml(currentCaptain.name)}" />`
+          : escapeHtml(currentCaptain.name.slice(0, 2));
+        document.getElementById('btn-goto-result').style.display = 'none';
+        document.getElementById('btn-auto-pick').disabled = false;
+      }
+
+      document.getElementById('btn-undo-pick').disabled = currentPickIndex === 0;
+
+      // Snake Order Chips (current round)
+      const roundStartIdx = (currentRound - 1) * teamCount;
+      const roundSlice = pickOrder.slice(roundStartIdx, roundStartIdx + teamCount);
+      const orderBar = document.getElementById('snake-order-bar');
+      orderBar.innerHTML = `<span style="font-size:0.78rem; color:var(--text-muted);">${currentRound}R 순서:</span>` +
+        roundSlice.map((cid, idx) => {
+          const cap = appState.captains.find(c => c.id === cid);
+          const isCurrent = !finished && (roundStartIdx + idx === currentPickIndex);
+          return `<span class="order-chip ${isCurrent ? 'active' : ''}">${idx + 1}. ${escapeHtml(cap ? cap.name : '')}</span>`;
+        }).join('<span>➔</span>');
+
+      // Horizontal Teams Board
+      const board = document.getElementById('draft-teams-board');
+      board.innerHTML = appState.captains.map(cap => {
+        const isTurn = cap.id === currentCaptainId;
+        const pickedIds = picks[cap.id] || [];
+        const slotsHtml = [];
+
+        for (let i = 0; i < appState.config.membersPerTeam; i++) {
+          const pid = pickedIds[i];
+          const player = pid ? appState.players.find(p => p.id === pid) : null;
+          if (player) {
+            slotsHtml.push(`
+              <div class="team-slot-card filled border-tier-${player.tier}" onclick="openModal('player', '${player.id}')">
+                <div class="avatar-box" style="border-width:1px;">
+                  ${player.image ? `<img src="${player.image}" />` : `<span class="avatar-placeholder" style="font-size:1.3rem;">${escapeHtml(player.name.slice(0,2))}</span>`}
+                  <span class="tier-badge tier-${player.tier}" style="position:absolute; top:3px; left:3px; font-size:0.65rem; padding:1px 5px;">${player.tier}</span>
+                </div>
+                <div style="font-size:0.78rem; font-weight:700; margin-top:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${escapeHtml(player.name)}</div>
+                <div style="font-size:0.68rem; color:var(--text-muted);">${escapeHtml(player.pos)} · ${escapeHtml(player.element)}</div>
+              </div>
+            `);
+          } else {
+            slotsHtml.push(`
+              <div class="team-slot-card">
+                <div style="margin:auto; color:#475569; font-size:0.75rem; font-weight:600;">SLOT ${i + 1}<br/>대기중</div>
+              </div>
+            `);
+          }
+        }
+
+        return `
+          <div class="team-column ${isTurn ? 'active-turn' : ''}">
+            <div class="team-captain-header" onclick="openModal('captain', '${cap.id}')">
+              <div class="captain-thumb">
+                ${cap.image ? `<img src="${cap.image}" />` : escapeHtml(cap.name.slice(0,2))}
+              </div>
+              <div style="overflow:hidden;">
+                <div style="font-size:0.72rem; color:#60a5fa; font-weight:700;">👑 감독 · ${escapeHtml(cap.pos)}</div>
+                <div style="font-weight:800; font-size:0.95rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${escapeHtml(cap.name)}</div>
+                <div style="font-size:0.72rem; color:var(--text-muted);">${escapeHtml(cap.element)} · ${pickedIds.length}/${appState.config.membersPerTeam}명</div>
+              </div>
+            </div>
+            <div class="team-slots">${slotsHtml.join('')}</div>
+          </div>
+        `;
+      }).join('');
+
+      // Populate Position Filter
+      const filterSel = document.getElementById('filter-pos-select');
+      const prevFilter = filterSel.value;
+      filterSel.innerHTML = `<option value="ALL">전체 포지션 보기</option>` +
+        appState.config.positions.map(p => `<option value="${escapeHtml(p)}">${escapeHtml(p)}</option>`).join('');
+      if ([...filterSel.options].some(o => o.value === prevFilter)) filterSel.value = prevFilter;
+
+      renderDraftPool();
+    }
+
+    function renderDraftPool() {
+      const draftedSet = getDraftedPlayerIds();
+      const filterPos = document.getElementById('filter-pos-select').value;
+      const poolContainer = document.getElementById('draft-tier-pool');
+
+      poolContainer.innerHTML = TIERS.map(tier => {
+        const tierPlayers = appState.players.filter(p =>
+          p.tier === tier && (filterPos === 'ALL' || p.pos === filterPos)
+        );
+        if (tierPlayers.length === 0) return '';
+
+        const cardsHtml = tierPlayers.map(p => {
+          const isDrafted = draftedSet.has(p.id);
+          const totalStat = calcEntityTotalStat(p);
+          return `
+            <div class="player-card border-tier-${p.tier} ${isDrafted ? 'drafted' : ''}">
+              ${isDrafted ? `<div class="drafted-stamp">지명 완료</div>` : ''}
+              <div class="avatar-box" style="cursor:pointer;" onclick="openModal('player', '${p.id}')">
+                ${p.image ? `<img src="${p.image}" />` : `<span class="avatar-placeholder">${escapeHtml(p.name.slice(0,2))}</span>`}
+                <span class="tier-badge tier-${p.tier}" style="position:absolute; top:6px; left:6px;">${p.tier}</span>
+                <span class="tag-pill" style="position:absolute; bottom:6px; right:6px; background:rgba(0,0,0,0.78);">${escapeHtml(p.pos)}</span>
+              </div>
+              <div class="card-name" title="${escapeHtml(p.name)}">${escapeHtml(p.name)}</div>
+              <div class="card-meta">
+                <span>${escapeHtml(p.element)}·${escapeHtml(p.race)}</span>
+                <span>총합 ${totalStat}</span>
+              </div>
+              <div class="card-actions">
+                <button onclick="openModal('player', '${p.id}')">상세</button>
+                <button class="btn-primary" ${isDrafted || appState.draft.finished ? 'disabled' : ''} onclick="pickPlayer('${p.id}')">지명</button>
+              </div>
+            </div>
+          `;
+        }).join('');
+
+        return `
+          <div class="tier-row-container">
+            <div class="tier-row-header">
+              <span class="tier-badge tier-${tier}" style="font-size:0.9rem; padding:3px 10px;">${tier} TIER</span>
+              <span style="color:var(--text-muted); font-size:0.85rem;">(${tierPlayers.length}명)</span>
+            </div>
+            <div class="tier-cards-grid">${cardsHtml}</div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    /* ==========================================================================
+       7. TEAM SYNERGY & EVALUATION ENGINE (RESULT VIEW)
+       ========================================================================== */
+    const ELEMENT_SYNERGIES = [
+      { pair: ['물', '얼음'], desc: '빙결·수류 연계 시너지 (필드 장악력 극대화)' },
+      { pair: ['해', '불'], desc: '태양열·화염 증폭 시너지 (폭발적 화력)' },
+      { pair: ['선', '악'], desc: '음양·광암 조화 (변칙적 전술 및 상성 무효화)' },
+      { pair: ['달', '귀신'], desc: '심야·영혼 공명 (기습 및 상태이상 효율 상승)' },
+      { pair: ['땅', '바위'], desc: '대지 요새 시너지 (물리 방어 및 진형 유지력 강화)' },
+      { pair: ['전기', '강철'], desc: '전자기·초전도 시너지 (기동력 및 관통력 증가)' },
+      { pair: ['드래곤', '비행'], desc: '제공권 장악 및 광역 브레스 연계' },
+      { pair: ['풀', '독'], desc: '맹독 포자 시너지 (지속 피해 및 소모전 우위)' }
+    ];
+
+    function analyzeTeam(captain, members) {
+      const roster = [captain, ...members];
+      const tierScoreMap = { X: 100, S: 88, A: 76, B: 64, C: 52, D: 40 };
+
+      // 1. Tier Analysis
+      const tierCounts = { X: 0, S: 0, A: 0, B: 0, C: 0, D: 0 };
+      let tierSum = 0;
+      roster.forEach(m => {
+        tierCounts[m.tier] = (tierCounts[m.tier] || 0) + 1;
+        tierSum += tierScoreMap[m.tier] || 60;
+      });
+      const avgTierScore = tierSum / roster.length;
+      const highTierCount = tierCounts.X + tierCounts.S;
+
+      let tierComment = '';
+      if (highTierCount >= 3) {
+        tierComment = `X·S티어 핵심 에이스가 ${highTierCount}명 포진해 있어 초중반 라인전과 한타 캐리력이 최상위권입니다.`;
+      } else if (highTierCount >= 1) {
+        tierComment = `확실한 메인 에이스(${highTierCount}명)를 중심으로 중위권 티어 팀원들이 탄탄하게 받쳐주는 균형 잡힌 구조입니다.`;
+      } else {
+        tierComment = `고티어 에이스는 부족하지만 전체적인 전력 편차가 적어 팀워크와 전략 운영이 승패를 좌우합니다.`;
+      }
+
+      // 2. Element Synergy & Weakness
+      const elements = roster.map(m => m.element);
+      const uniqueElements = [...new Set(elements)];
+      const dupElements = elements.filter((item, index) => elements.indexOf(item) !== index);
+
+      const foundSynergies = [];
+      ELEMENT_SYNERGIES.forEach(syn => {
+        if (uniqueElements.includes(syn.pair[0]) && uniqueElements.includes(syn.pair[1])) {
+          foundSynergies.push(`[${syn.pair[0]}+${syn.pair[1]}] ${syn.desc}`);
+        }
+      });
+
+      let elementComment = `총 ${roster.length}명 중 ${uniqueElements.length}종의 속성을 보유하고 있습니다. `;
+      if (foundSynergies.length > 0) {
+        elementComment += `발동 시너지: ${foundSynergies.join(' / ')}. `;
+      } else {
+        elementComment += `특정 이중 속성 시너지는 적으나 범용적인 속성 배치를 갖췄습니다. `;
+      }
+      if (dupElements.length > 0) {
+        elementComment += `⚠️ 주의: [${[...new Set(dupElements)].join(', ')}] 속성이 중복되어 특정 카운터 상성에 일괄 취약할 수 있습니다.`;
+      } else {
+        elementComment += `✅ 속성 중복이 전혀 없어 약점을 완벽히 상호 보완합니다.`;
+      }
+
+      // 3. Stats & Role Balance
+      let sumAtk = 0, sumSpa = 0, sumDef = 0, sumSpd = 0, sumStr = 0, totalStatsAll = 0;
+      const stat8Names = [];
+      roster.forEach(m => {
+        sumAtk += m.stats.atk || 0;
+        sumSpa += m.stats.spa || 0;
+        sumDef += m.stats.def || 0;
+        sumSpd += m.stats.spd || 0;
+        sumStr += m.stats.str || 0;
+        totalStatsAll += calcEntityTotalStat(m);
+        const st8Obj = appState.config.stat8List.find(s => s.id === m.stats.stat8Type);
+        if (st8Obj) stat8Names.push(`${m.name}(${st8Obj.name.split(' ')[0]} ${m.stats.stat8Val})`);
+      });
+
+      const uniquePosCount = new Set(roster.map(m => m.pos)).size;
+      const posCoverageRatio = Math.min(1, uniquePosCount / Math.min(roster.length, appState.config.positions.length));
+
+      const atkRatio = Math.round((sumAtk / Math.max(1, sumAtk + sumSpa)) * 100);
+      const spaRatio = 100 - atkRatio;
+
+      let statComment = `물리(${atkRatio}%) vs 특수(${spaRatio}%) 딜 비중을 보이며, `;
+      if (Math.abs(atkRatio - spaRatio) <= 20) {
+        statComment += `물리·특수 하이브리드 화력 밸런스가 매우 이상적입니다. `;
+      } else {
+        statComment += `${atkRatio > spaRatio ? '물리 공격' : '특수 공격'}에 특화된 조합입니다. `;
+      }
+      statComment += `평균 개체값 총합은 ${Math.round(totalStatsAll / roster.length).toLocaleString()}점이며, 핵심 고유 스탯 [${stat8Names.slice(0, 3).join(', ')} 등]이 시너지를 냅니다.`;
+
+      // Calculate Final Score out of 5.0
+      const rawScore =
+        (avgTierScore / 100) * 2.1 +
+        (uniqueElements.length / roster.length) * 0.9 +
+        posCoverageRatio * 1.1 +
+        Math.min(1, (totalStatsAll / roster.length) / 2250) * 0.7 +
+        (foundSynergies.length > 0 ? 0.2 : 0);
+
+      const finalRating = Math.min(5.0, Math.max(1.5, rawScore)).toFixed(1);
+
+      return {
+        rating: finalRating,
+        tierCounts,
+        tierComment,
+        elementComment,
+        statComment,
+        uniqueElements
+      };
+    }
+
+    function renderResultView() {
+      const grid = document.getElementById('result-analysis-grid');
+      if (!appState.captains.length) return;
+
+      grid.innerHTML = appState.captains.map(cap => {
+        const pickedIds = appState.draft.picks[cap.id] || [];
+        const members = pickedIds.map(id => appState.players.find(p => p.id === id)).filter(Boolean);
+        const analysis = analyzeTeam(cap, members);
+
+        const fullStars = Math.round(parseFloat(analysis.rating));
+        const starsStr = '★'.repeat(fullStars) + '☆'.repeat(5 - fullStars);
+
+        const rosterCards = [cap, ...members].map((m, idx) => `
+          <div style="text-align:center; width:64px; cursor:pointer;" onclick="openModal('${idx === 0 ? 'captain' : 'player'}', '${m.id}')">
+            <div class="avatar-box border-tier-${m.tier}" style="width:64px; height:64px; margin:0 auto 4px;">
+              ${m.image ? `<img src="${m.image}" />` : `<span class="avatar-placeholder" style="font-size:1.1rem;">${escapeHtml(m.name.slice(0,2))}</span>`}
+              <span class="tier-badge tier-${m.tier}" style="position:absolute; top:2px; left:2px; font-size:0.6rem; padding:1px 4px;">${m.tier}</span>
+            </div>
+            <div style="font-size:0.72rem; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${idx === 0 ? '👑' : ''}${escapeHtml(m.name)}</div>
+            <div style="font-size:0.65rem; color:var(--text-muted);">${escapeHtml(m.pos)}</div>
+          </div>
+        `).join('');
+
+        return `
+          <div class="analysis-card">
+            <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-color); padding-bottom:10px; margin-bottom:12px;">
+              <div>
+                <div style="font-size:0.78rem; color:#60a5fa; font-weight:700;">TEAM ${escapeHtml(cap.name)}</div>
+                <div style="font-size:1.1rem; font-weight:800;">${escapeHtml(cap.name)} 사단 (${members.length + 1}인)</div>
+              </div>
+              <div style="text-align:right;">
+                <div class="star-rating">${starsStr}</div>
+                <div style="font-size:0.88rem; font-weight:800; color:#fbbf24;">종합 평점 ${analysis.rating} / 5.0</div>
+              </div>
+            </div>
+
+            <div style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:12px;">
+              ${rosterCards}
+            </div>
+
+            <div class="analysis-section-title">1. 티어 분포 및 캐리력 분석</div>
+            <div class="analysis-text">
+              <div style="margin-bottom:4px;">
+                ${TIERS.map(t => `<span class="tag-pill"><strong class="tier-${t}" style="padding:0 4px; border-radius:2px;">${t}</strong> ${analysis.tierCounts[t]}명</span>`).join('')}
+              </div>
+              ${analysis.tierComment}
+            </div>
+
+            <div class="analysis-section-title">2. 20개 속성 시너지 및 상성 보완 분석</div>
+            <div class="analysis-text">${analysis.elementComment}</div>
+
+            <div class="analysis-section-title">3. 8대 스탯 및 포지션 밸런스 분석</div>
+            <div class="analysis-text">${analysis.statComment}</div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    /* ==========================================================================
+       8. JSON EXPORT / IMPORT & UTILS
+       ========================================================================== */
+    function exportJSON() {
+      const dataStr = JSON.stringify(appState, null, 2);
+      const blob = new Blob([dataStr], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `snake_draft_backup_${new Date().toISOString().slice(0, 10)}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    function importJSON(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          const parsed = JSON.parse(e.target.result);
+          if (!parsed.config || !parsed.captains || !parsed.players) {
+            throw new Error('올바른 드래프트 데이터 형식이 아닙니다.');
+          }
+          appState = parsed;
+          saveState();
+          populateModalSelects();
+          renderSetupView();
+          if (appState.draft && appState.draft.started) {
+            switchView(appState.draft.finished ? 'result' : 'draft');
+          } else {
+            switchView('setup');
+          }
+          alert('데이터를 성공적으로 불러왔습니다!');
+        } catch (err) {
+          alert('JSON 파일 불러오기 실패: ' + err.message);
+        }
+      };
+      reader.readAsText(file);
+      event.target.value = '';
+    }
+
+    function escapeHtml(str) {
+      if (str === null || str === undefined) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    // Boot
+    window.addEventListener('DOMContentLoaded', initApp);
+  </script>
+</body>
+</html>
